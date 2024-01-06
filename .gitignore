@@ -1,5 +1,5 @@
 Extracted/
 uploads/
-templates/
+templates/*
 !/templates/index.html
 !/templates/base.html
