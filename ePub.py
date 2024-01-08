@@ -29,27 +29,25 @@ def htmlConverter(bookObj, spineItem, extension):
                     i.attrs["href"] = i.attrs["href"][1:]
                 i.attrs["href"] = "{{ url_for('static', filename='images/"+ i.attrs["href"] +"') }}"
                 print(i.attrs, "Found link stylesheet. just a notification that htmlConverter is working for css")
-            
+
+        #getting head and Body of the html files without the <HEAD> and <BODY> tags
         head = ""
         body = ""
-        #getting head and Body of the html files without the <HEAD> and <BODY> tags
-        for i in chapter.findAll("head"):
-            for j in i.findChildren():
-                head = head+str(j)+"\n"
-        for i in chapter.findAll("body"):
-            for j in i.findChildren():
-                body = body+str(j)+"\n"
-        return [head, body]
+        for i in chapter.find("head").findChildren(recursive=False):
+            head += str(i)+"\n"
+        for i in chapter.find("body").findChildren(recursive=False):
+            body += str(i)+"\n"
 
 def xmlConverter(bookObj, spineItem, extension):
-    pass
+    return ["Head is empty", "Ddint impliment this bitch. I am xmlConverter"]
 
 def xhtmlConverter(bookObj, spineItem, extension):
     """
     for reading the files of the spineItem of xHTML
     """
     with open(bookObj.tempAddress+ spineItem.href, "r", encoding="utf8") as chapter:
-        chapter = bs(chapter.read(), extension)
+        chapter = bs(chapter.read(), "xml")
+        print("Start of cover")
         for i in chapter.find_all("image"):
             i.attrs["xlink:href"] = "{{ url_for('static', filename='images/"+ i.attrs["xlink:href"] +"') }}"
             #print(i.attrs)
@@ -66,24 +64,24 @@ def xhtmlConverter(bookObj, spineItem, extension):
         head = ""
         body = ""
         #getting head and Body of the html files without the <HEAD> and <BODY> tags
-        for i in chapter.findAll("head"):
-            for j in i.findChildren():
-                head = head+str(j)+"\n"
-        for i in chapter.findAll("body"):
-            for j in i.findChildren():
-                body = body+str(j)+"\n"
+        for i in chapter.find("head").findChildren(recursive=False):
+            head += str(i)+"\n"
+        for i in chapter.find("body").findChildren(recursive=False):
+            body += str(i)+"\n"
         return [head, body]
 
 
 def moveBooksfromExtractedtoApplicaion(file):
     '''
     This is where we'll convert the relative path to static
+    Moving Css and Images from the source to Static folder
     '''
 
 def renderSpine(bookObj):
     '''
     Extracting Spine data and sorting the files into the project
     '''
+    modifiedSpineItems = []
     for spineItem in bookObj.spine:
         extension = spineItem.href.split(".")[-1]
         print(spineItem.href, "this is spine href")
@@ -107,7 +105,9 @@ def renderSpine(bookObj):
         print(currPage, "this is the new folder to save templetes")
         with open("templates/"+currPage, "w", encoding="utf8") as book:
             book.write("{% extends 'base.html' %}\n\n"+ "{% block head %}\n"+head+"\n{% endblock %}\n" +"{% block body %}\n"+ body +"\n{% endblock %}")
-    return currPage # should be a tab forward
+        modifiedSpineItems.append(currPage)
+        break
+    return modifiedSpineItems # should be a tab forward
     return "loading Book "+ file.filename + "\n".join(str(v.order) for v in bookObj.spine)
 
 def openBook(name):
@@ -127,6 +127,12 @@ def openBook(name):
             #os.mkdir("templates/"+newBook.name+"_1")
             # should make forlders with followup names
             pass
+        return newBook
+    else:
+        return False
+
+
+
 
 
 @app.route('/')
@@ -141,48 +147,15 @@ def upload_file():
     if file.filename.strip() != "":
         file.save("uploads/"+file.filename)
         newBook = Book("uploads/"+file.filename, file.filename)
-        openBook(file.filename)
-        if newBook.checkEpub():
-            newBook.getContainerXml()
-            newBook.constructSpine()
-            newBook.getToc()
-            #newBook.deleteTempFolder()
-            #rint(newBook.name, "this is book name")
-            try:
-                os.mkdir("templates/"+newBook.name)
-            except:
-                pass
-            #done till here
-            currPage = ""
-            for spineItem in newBook.spine:
-                extension = spineItem.href.split(".")[-1]
-                print(spineItem.href, "this is spine href")
-                currPage = newBook.name+"/"+spineItem.href.split("/")[-1]
-                if extension == "xhtml":
-                    extension = "html"
-                #print(newBook.tempAddress+ spineItem.href)
-                with open(newBook.tempAddress+ spineItem.href, "r", encoding="utf8") as chapter:
-                    chapter = bs(chapter.read(), extension)
-                    for i in chapter.find_all("image"):
-                        i.attrs["xlink:href"] = "{{ url_for('static', filename='images/"+ i.attrs["xlink:href"] +"') }}"
-                        #print(i.attrs)
-                    head = ""
-                    body = ""
-
-                    for i in chapter.findAll("head"):
-                        for j in i.findChildren():
-                            head = head+str(j)+"\n"
-                    for i in chapter.findAll("body"):
-                        for j in i.findChildren():
-                            body = body+str(j)+"\n"
-                    #print(head, "\n\n\n\n\n\n\n\n", body)
-                print(currPage, "this is the new folder to save templetes")
-                with open("templates/"+currPage, "w", encoding="utf8") as book:
-                    book.write("{% extends 'base.html' %}\n\n"+ "{% block head %}\n"+head+"{% endblock %}\n" +"{% block body %}\n"+ body +"{% endblock %}")
-            return render_template(currPage) # should be a tab forward
-            return "loading Book "+ file.filename + "\n".join(str(v.order) for v in newBook.spine)
-        else:
+        bookObj = openBook(file.filename)
+        if bookObj == False:
             return "There was an error while parsing the book"
+        #currPage = "This has no impact"
+        spineItems = renderSpine(bookObj)
+        
+        return render_template(spineItems[0]) # should be a tab forward
+        #return "loading Book "+ file.filename + "\n".join(str(v.order) for v in newBook.spine)
+        
     else:
         return redirect(url_for('index'))
 

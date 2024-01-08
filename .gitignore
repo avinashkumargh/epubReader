@@ -4,3 +4,4 @@ templates/*
 !/templates/index.html
 !/templates/base.html
 waste.py
+todo
