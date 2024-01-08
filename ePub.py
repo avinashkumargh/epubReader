@@ -5,6 +5,10 @@ import os
 
 app = Flask(__name__)
 
+def removeParsedFile(loc):
+    os.remove(loc)
+
+
 def htmlConverter(bookObj, spineItem, extension):
     """
     for reading the files of the spineItem of HTML
@@ -37,6 +41,9 @@ def htmlConverter(bookObj, spineItem, extension):
             head += str(i)+"\n"
         for i in chapter.find("body").findChildren(recursive=False):
             body += str(i)+"\n"
+        
+    removeParsedFile(bookObj.tempAddress+ spineItem.href)
+    return [head, body]    
 
 def xmlConverter(bookObj, spineItem, extension):
     return ["Head is empty", "Ddint impliment this bitch. I am xmlConverter"]
@@ -51,6 +58,12 @@ def xhtmlConverter(bookObj, spineItem, extension):
         for i in chapter.find_all("image"):
             i.attrs["xlink:href"] = "{{ url_for('static', filename='images/"+ i.attrs["xlink:href"] +"') }}"
             #print(i.attrs)
+
+        for i in chapter.find_all("img"):
+            i.attrs["src"] = i.attrs["src"].replace("../", "").replace("./", "")
+            if i.attrs["src"].startswith("/"):
+                i.attrs["src"] = i.attrs["src"][1:]
+            i.attrs["src"] = "{{ url_for('static', filename='images/"+ i.attrs["src"] +"') }}"
 
         #changing css from source to static
         for i in chapter.find_all("link"):
@@ -68,7 +81,8 @@ def xhtmlConverter(bookObj, spineItem, extension):
             head += str(i)+"\n"
         for i in chapter.find("body").findChildren(recursive=False):
             body += str(i)+"\n"
-        return [head, body]
+    removeParsedFile(bookObj.tempAddress+ spineItem.href)
+    return [head, body]
 
 
 def moveBooksfromExtractedtoApplicaion(file):
@@ -106,9 +120,8 @@ def renderSpine(bookObj):
         with open("templates/"+currPage, "w", encoding="utf8") as book:
             book.write("{% extends 'base.html' %}\n\n"+ "{% block head %}\n"+head+"\n{% endblock %}\n" +"{% block body %}\n"+ body +"\n{% endblock %}")
         modifiedSpineItems.append(currPage)
-        break
     return modifiedSpineItems # should be a tab forward
-    return "loading Book "+ file.filename + "\n".join(str(v.order) for v in bookObj.spine)
+    #return "loading Book "+ file.filename + "\n".join(str(v.order) for v in bookObj.spine)
 
 def openBook(name):
     '''

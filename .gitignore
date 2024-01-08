@@ -5,3 +5,6 @@ templates/*
 !/templates/base.html
 waste.py
 todo
+static/images/*
+static/css/*
+!/static/css/style.css
