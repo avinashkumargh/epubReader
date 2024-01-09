@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, url_for, redirect
 from epub_parser import Book
 from bs4 import BeautifulSoup as bs
-import os
+import os, glob, shutil
 
 app = Flask(__name__)
 
@@ -23,7 +23,7 @@ def htmlConverter(bookObj, spineItem, extension):
             if i.attrs["src"].startswith("/"):
                 i.attrs["src"] = i.attrs["src"][1:]
             i.attrs["src"] = "{{ url_for('static', filename='images/"+ i.attrs["src"] +"') }}"
-            print(i.attrs, "Found img. just a notification that htmlConverter is working for images")
+            #print(i.attrs, "Found img. just a notification that htmlConverter is working for images")
 
         #changing css from source to static
         for i in chapter.find_all("link"):
@@ -32,7 +32,7 @@ def htmlConverter(bookObj, spineItem, extension):
                 if i.attrs["href"].startswith("/"):
                     i.attrs["href"] = i.attrs["href"][1:]
                 i.attrs["href"] = "{{ url_for('static', filename='images/"+ i.attrs["href"] +"') }}"
-                print(i.attrs, "Found link stylesheet. just a notification that htmlConverter is working for css")
+                #print(i.attrs, "Found link stylesheet. just a notification that htmlConverter is working for css")
 
         #getting head and Body of the html files without the <HEAD> and <BODY> tags
         head = ""
@@ -85,11 +85,41 @@ def xhtmlConverter(bookObj, spineItem, extension):
     return [head, body]
 
 
-def moveBooksfromExtractedtoApplicaion(file):
+def moveFilesfromExtractedtoApplicaion(loc):
     '''
     This is where we'll convert the relative path to static
     Moving Css and Images from the source to Static folder
     '''
+    for i in os.walk(loc):
+        for j in i[2]:
+            currentFileLocation = (i[0]+"/"+j).replace("//", "/")
+            currentFileStaticLocation = (currentFileLocation).replace(loc, "")
+            folderToCreate = currentFileStaticLocation.rsplit("/", 1)
+            if j.endswith((".jpg", ".jpeg", ".svg")):
+                if len(folderToCreate) > 1: 
+                    try:
+                        os.mkdir(os.path.join("static/images/"+folderToCreate[0])) 
+                    except FileExistsError as e:
+                        print(e, " File already exists no issues anyway")
+                shutil.move(currentFileLocation, "static/images/"+currentFileStaticLocation)
+                #print(currentFileStaticLocation)
+                #print("image move from", (currentFileLocation).replace(loc, ""), " to static/images")
+            elif j.endswith(".css"):
+                if len(folderToCreate) > 1:
+                    try:
+                        os.mkdir(os.path.join("static/css/"+folderToCreate[0])) 
+                    except FileExistsError as e:
+                        print(e, " File already exists no issues anyway")
+                shutil.move(currentFileLocation, "static/css/"+currentFileStaticLocation)
+                #print(currentFileStaticLocation)
+                #print("CSS move from", (currentFileLocation).replace(loc, ""), " to static/css")
+            else:
+                '''
+                These files are not necessary as we extracted data from them initially
+                '''
+                #print(currentFileLocation, "       ", "static/images/"+currentFileStaticLocation)
+                #print("No need to create")
+                pass
 
 def renderSpine(bookObj):
     '''
@@ -98,7 +128,7 @@ def renderSpine(bookObj):
     modifiedSpineItems = []
     for spineItem in bookObj.spine:
         extension = spineItem.href.split(".")[-1]
-        print(spineItem.href, "this is spine href")
+        #print(bookObj.tempAddress, "is the temp address ", bookObj.name, " is the ename is the book")
         currPage = bookObj.name+"/"+spineItem.href.split("/")[-1]
         #if extension == "xhtml":
         #    extension = "html"
@@ -120,6 +150,7 @@ def renderSpine(bookObj):
         with open("templates/"+currPage, "w", encoding="utf8") as book:
             book.write("{% extends 'base.html' %}\n\n"+ "{% block head %}\n"+head+"\n{% endblock %}\n" +"{% block body %}\n"+ body +"\n{% endblock %}")
         modifiedSpineItems.append(currPage)
+        moveFilesfromExtractedtoApplicaion(bookObj.tempAddress)
     return modifiedSpineItems # should be a tab forward
     #return "loading Book "+ file.filename + "\n".join(str(v.order) for v in bookObj.spine)
 
@@ -145,8 +176,36 @@ def openBook(name):
         return False
 
 
+def removeCache():
+    '''
+    removing extra templates, static files
+    '''
+    '''
+    Produces multiple errors 
+    look for a workaround to add files manually or 
+    see how the error is being created with the \ 
+    and / while using blob and os.walk
+    '''
+    '''
+    removing extra templates, static files
+    '''
+    for clean_up in glob.glob('templates/*'):
+        clean_up = clean_up.replace("\\", "/")
+        if clean_up not in ["templates/base.html", "templates/index.html"]:    
+            shutil.rmtree(clean_up)
+    print("Templates cleared")
 
+    for basePath, folders, files in os.walk("static/"):
+        #print(basePath, folders, files)
+        if files != []:
+            for file in files:
+                filePath = (basePath+"/"+file).replace("\\", "/")
+                if filePath not in ["static/css/style.css"]:
+                    print(filePath, " original file ", basePath+"/"+file)
+                    os.remove(basePath+"/"+file)#os.path.join(basePath,file))
+    print("static files cleared")
 
+removeCache()
 
 @app.route('/')
 @app.route('/index')
