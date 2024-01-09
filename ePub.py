@@ -27,11 +27,11 @@ def htmlConverter(bookObj, spineItem, extension):
 
         #changing css from source to static
         for i in chapter.find_all("link"):
-            if i.attrs["rel"] == "stylesheet":    
+            if i.attrs["rel"][0] == "stylesheet":
                 i.attrs["href"] = i.attrs["href"].replace("../", "").replace("./", "")
                 if i.attrs["href"].startswith("/"):
                     i.attrs["href"] = i.attrs["href"][1:]
-                i.attrs["href"] = "{{ url_for('static', filename='images/"+ i.attrs["href"] +"') }}"
+                i.attrs["href"] = "{{ url_for('static', filename='css/"+ i.attrs["href"] +"') }}"
                 #print(i.attrs, "Found link stylesheet. just a notification that htmlConverter is working for css")
 
         #getting head and Body of the html files without the <HEAD> and <BODY> tags
@@ -67,7 +67,7 @@ def xhtmlConverter(bookObj, spineItem, extension):
 
         #changing css from source to static
         for i in chapter.find_all("link"):
-            if i.attrs["rel"] == "stylesheet":    
+            if i.attrs["rel"][0] == "stylesheet":    
                 i.attrs["href"] = i.attrs["href"].replace("../", "").replace("./", "")
                 if i.attrs["href"].startswith("/"):
                     i.attrs["href"] = i.attrs["href"][1:]
@@ -186,9 +186,6 @@ def removeCache():
     see how the error is being created with the \ 
     and / while using blob and os.walk
     '''
-    '''
-    removing extra templates, static files
-    '''
     for clean_up in glob.glob('templates/*'):
         clean_up = clean_up.replace("\\", "/")
         if clean_up not in ["templates/base.html", "templates/index.html"]:    
@@ -205,7 +202,7 @@ def removeCache():
                     os.remove(basePath+"/"+file)#os.path.join(basePath,file))
     print("static files cleared")
 
-removeCache()
+#removeCache()
 
 @app.route('/')
 @app.route('/index')
@@ -225,7 +222,7 @@ def upload_file():
         #currPage = "This has no impact"
         spineItems = renderSpine(bookObj)
         
-        return render_template(spineItems[0]) # should be a tab forward
+        return render_template(spineItems[8]) # should be a tab forward
         #return "loading Book "+ file.filename + "\n".join(str(v.order) for v in newBook.spine)
         
     else:
