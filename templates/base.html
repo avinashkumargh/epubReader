@@ -8,9 +8,18 @@
     {% endblock %}
 </head>
 <body>
+    <form action="/previousChapter" method="post">
+        <!-- <button id="nextpagebutton" type="button" onclick="loadNextPage()">i'm a button</button> -->
+        <input type="submit" value="Previous Chapter">
+    </form>
+    <form action="/nextChapter" method="post">
+        <!-- <button id="nextpagebutton" type="button" onclick="loadNextPage()">i'm a button</button> -->
+        <input type="submit" value="Next Chapter">
+    </form>
     <div id="main-container">
         {% block body %}
         {% endblock %}
     </div>
 </body>
+<script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
 </html>

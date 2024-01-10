@@ -8,6 +8,9 @@ app = Flask(__name__)
 def removeParsedFile(loc):
     os.remove(loc)
 
+spineItems = []
+spineIndex = 0
+templatesTempName = ""
 
 def htmlConverter(bookObj, spineItem, extension):
     """
@@ -158,12 +161,14 @@ def openBook(name):
     '''
     Extracting the uploaded book and parsing it.
     '''
+    global templatesTempName
     loc = "uploads/"+name
     newBook = Book(loc, name)
     if newBook.checkEpub():
         newBook.getContainerXml()
         newBook.constructSpine()
         newBook.getToc()
+        templatesTempName = newBook.name
         #newBook.deleteTempFolder()
         try:
             os.mkdir("templates/"+newBook.name)
@@ -188,7 +193,7 @@ def removeCache():
     '''
     for clean_up in glob.glob('templates/*'):
         clean_up = clean_up.replace("\\", "/")
-        if clean_up not in ["templates/base.html", "templates/index.html"]:    
+        if clean_up not in ["templates/base.html", "templates/index.html", "templates/json.html"]:    
             shutil.rmtree(clean_up)
     print("Templates cleared")
 
@@ -197,12 +202,12 @@ def removeCache():
         if files != []:
             for file in files:
                 filePath = (basePath+"/"+file).replace("\\", "/")
-                if filePath not in ["static/css/style.css"]:
+                if filePath not in ["static/css/style.css", "static/js/scripts.js"]:
                     print(filePath, " original file ", basePath+"/"+file)
                     os.remove(basePath+"/"+file)#os.path.join(basePath,file))
     print("static files cleared")
 
-#removeCache()
+removeCache()
 
 @app.route('/')
 @app.route('/index')
@@ -212,6 +217,7 @@ def index():
 @app.route('/', methods=["POST"])
 @app.route('/index', methods=["POST"])
 def upload_file():
+    global spineItems
     file = request.files.get('file')
     if file.filename.strip() != "":
         file.save("uploads/"+file.filename)
@@ -222,11 +228,44 @@ def upload_file():
         #currPage = "This has no impact"
         spineItems = renderSpine(bookObj)
         
-        return render_template(spineItems[8]) # should be a tab forward
+        return render_template(spineItems[0]) # should be a tab forward
         #return "loading Book "+ file.filename + "\n".join(str(v.order) for v in newBook.spine)
         
     else:
         return redirect(url_for('index'))
 
+
+
+@app.route('/previousChapter', methods=['GET', 'POST'])
+def LoadPreviousChapter():
+    global spineIndex
+    if spineIndex<=0:
+        pass
+    else:
+        spineIndex-=1
+    #print("display the next page")
+    return render_template(spineItems[spineIndex])
+
+@app.route('/nextChapter', methods=['GET', 'POST'])
+def LoadNextChapter():
+    global spineIndex
+    if len(spineItems) <= spineIndex:
+        pass
+    else:
+        spineIndex+=1
+    #print("display the next page")
+    return render_template(spineItems[spineIndex])
+
+@app.route('/<path:redirectLocation>', methods=['GET', 'POST'])
+def loadPage(redirectLocation):
+    '''
+    should impliment changing the index of the spine os that previous and next works fine
+    '''
+    global spineIndex
+    spineIndex = spineItems.index(templatesTempName+"/"+redirectLocation)
+    print(spineItems.index(templatesTempName+"/"+redirectLocation))
+    return render_template(templatesTempName+"/"+redirectLocation)
+
+    
 
 app.run(debug= True)
